@@ -92,6 +92,15 @@ class FuelEntryProvider extends ChangeNotifier {
     return true;
   }
 
+  Future<void> updateEntry(FuelEntry e) async {
+    await DatabaseHelper.instance.updateEntry(e);
+    final idx = _entries.indexWhere((x) => x.id == e.id);
+    if (idx != -1) _entries[idx] = e;
+    _entries.sort((a, b) => a.kmReading.compareTo(b.kmReading));
+    _rebuildStats();
+    notifyListeners();
+  }
+
   Future<void> deleteEntry(int id) async {
     await DatabaseHelper.instance.deleteEntry(id);
     _entries.removeWhere((e) => e.id == id);

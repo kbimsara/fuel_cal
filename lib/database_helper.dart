@@ -81,6 +81,10 @@ class DatabaseHelper {
     return maps.map(FuelEntry.fromMap).toList();
   }
 
+  Future<void> updateEntry(FuelEntry e) async =>
+      (await database).update('fuel_entries', e.toMap(),
+          where: 'id = ?', whereArgs: [e.id]);
+
   Future<void> deleteEntry(int id) async =>
       (await database).delete('fuel_entries', where: 'id = ?', whereArgs: [id]);
 }

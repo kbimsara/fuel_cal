@@ -11,7 +11,7 @@ A modern Android app built with Flutter for tracking vehicle fuel consumption, m
 - **Fuel Consumption Calculation** — Automatic km/L calculation between log entries
 - **Estimated Range** — Real-time remaining range based on average efficiency
 - **Consumption Trend Chart** — Line chart of fuel efficiency over time
-- **Full History** — Every entry with trip stats, swipe-to-delete
+- **Full History** — Every entry with trip stats, swipe-to-delete, and tap-to-edit
 - **Offline / Local** — All data stored on-device via SQLite (no internet required)
 - **Dark Theme** — Modern dark UI with cyan accent
 
@@ -33,6 +33,12 @@ Each log entry captures:
 | Odometer (km) | Current dashboard km reading |
 | Gauge poles | How many indicator segments are lit on the physical gauge |
 | Liters filled | Optionally, how many liters you put in (when refueling) |
+| Notes | Optional remarks for the entry |
+
+### Editing & Deleting Entries
+From the **History** tab:
+- Tap the **pencil icon** on any entry to open it in edit mode — all fields are pre-filled and validated against neighboring entries to keep odometer readings in order.
+- Swipe **left** on any entry and confirm to permanently delete it. Trip statistics are automatically recalculated after every change.
 
 ### Fuel Consumption Formula
 
@@ -115,8 +121,8 @@ lib/
 ├── screens/
 │   ├── app_shell.dart         # Bottom navigation shell
 │   ├── dashboard_screen.dart  # Main dashboard
-│   ├── log_entry_screen.dart  # Add fuel entry form
-│   ├── history_screen.dart    # Entry history list
+│   ├── log_entry_screen.dart  # Add / edit fuel entry form
+│   ├── history_screen.dart    # Entry history list (edit & delete)
 │   ├── vehicles_screen.dart   # Vehicle management
 │   └── add_vehicle_screen.dart
 └── widgets/

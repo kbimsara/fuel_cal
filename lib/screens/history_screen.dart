@@ -6,6 +6,7 @@ import '../providers/fuel_entry_provider.dart';
 import '../models/fuel_entry.dart';
 import '../models/trip_stat.dart';
 import '../theme.dart';
+import 'log_entry_screen.dart';
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
@@ -133,9 +134,9 @@ class HistoryScreen extends StatelessWidget {
 
   Widget _list(BuildContext context, FuelEntryProvider fp, int totalPoles,
       double tankCapacity) {
-    // Show newest first
-    final entries = fp.entries.reversed.toList();
-    // Build stat lookup by entry id
+    // fp.entries is sorted ascending by km; show newest first
+    final sorted = fp.entries; // ascending
+    final entries = sorted.reversed.toList();
     final statByEntryId = {
       for (final s in fp.stats) s.entry.id: s,
     };
@@ -147,8 +148,16 @@ class HistoryScreen extends StatelessWidget {
       itemBuilder: (context, i) {
         final entry = entries[i];
         final stat = statByEntryId[entry.id];
-        return _entryCard(context, entry, stat, totalPoles, tankCapacity,
-            fp);
+        // Find position in sorted list to derive prev/next km bounds
+        final sortedIdx = sorted.indexOf(entry);
+        final prevKm =
+            sortedIdx > 0 ? sorted[sortedIdx - 1].kmReading : null;
+        final nextKm =
+            sortedIdx < sorted.length - 1
+                ? sorted[sortedIdx + 1].kmReading
+                : null;
+        return _entryCard(context, entry, stat, totalPoles, tankCapacity, fp,
+            prevKm, nextKm);
       },
     );
   }
@@ -159,7 +168,9 @@ class HistoryScreen extends StatelessWidget {
       TripStat? stat,
       int totalPoles,
       double tankCapacity,
-      FuelEntryProvider fp) {
+      FuelEntryProvider fp,
+      double? prevKm,
+      double? nextKm) {
     final fraction =
         totalPoles > 0 ? (entry.currentGaugePoles / totalPoles) : 0.0;
     final liters = fraction * tankCapacity;
@@ -237,6 +248,24 @@ class HistoryScreen extends StatelessWidget {
                   '${entry.kmReading.toStringAsFixed(0)} km',
                   style: const TextStyle(
                       color: AppTheme.textSecondary, fontSize: 12),
+                ),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => LogEntryScreen(
+                        initialEntry: entry,
+                        prevKm: prevKm,
+                        nextKm: nextKm,
+                      ),
+                    ),
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: Icon(Icons.edit_rounded,
+                        size: 16, color: AppTheme.textSecondary),
+                  ),
                 ),
               ],
             ),

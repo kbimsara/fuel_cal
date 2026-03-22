@@ -10,7 +10,23 @@ import '../theme.dart';
 import '../widgets/gauge_poles_stepper.dart';
 
 class LogEntryScreen extends StatefulWidget {
-  const LogEntryScreen({super.key});
+  /// When provided the screen runs in edit mode instead of create mode.
+  final FuelEntry? initialEntry;
+
+  /// km of the entry just before the one being edited (null if it is the first).
+  final double? prevKm;
+
+  /// km of the entry just after the one being edited (null if it is the last).
+  final double? nextKm;
+
+  const LogEntryScreen({
+    super.key,
+    this.initialEntry,
+    this.prevKm,
+    this.nextKm,
+  });
+
+  bool get _isEditing => initialEntry != null;
 
   @override
   State<LogEntryScreen> createState() => _LogEntryScreenState();
@@ -28,6 +44,24 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
   bool _saving = false;
 
   @override
+  void initState() {
+    super.initState();
+    final e = widget.initialEntry;
+    if (e != null) {
+      _kmCtrl.text = e.kmReading.toStringAsFixed(0);
+      _notesCtrl.text = e.notes ?? '';
+      _currentPoles = e.currentGaugePoles;
+      _filledUp = e.litersFilled != null;
+      if (e.litersFilled != null) {
+        _litersCtrl.text = e.litersFilled!.toStringAsFixed(1);
+      }
+      try {
+        _date = DateTime.parse(e.date);
+      } catch (_) {}
+    }
+  }
+
+  @override
   void dispose() {
     _kmCtrl.dispose();
     _litersCtrl.dispose();
@@ -42,7 +76,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
         final vehicle = vp.selected;
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Log Fuel Entry'),
+            title: Text(widget._isEditing ? 'Edit Entry' : 'Log Fuel Entry'),
             actions: [
               if (vehicle != null)
                 TextButton.icon(
@@ -106,9 +140,20 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
                           if (km == null || km < 0) {
                             return 'Enter a valid number';
                           }
-                          final prev = fp.latest?.kmReading;
-                          if (prev != null && km <= prev) {
-                            return 'Must be greater than last reading (${prev.toStringAsFixed(0)} km)';
+                          if (widget._isEditing) {
+                            final prev = widget.prevKm;
+                            final next = widget.nextKm;
+                            if (prev != null && km <= prev) {
+                              return 'Must be greater than previous entry (${prev.toStringAsFixed(0)} km)';
+                            }
+                            if (next != null && km >= next) {
+                              return 'Must be less than next entry (${next.toStringAsFixed(0)} km)';
+                            }
+                          } else {
+                            final prev = fp.latest?.kmReading;
+                            if (prev != null && km <= prev) {
+                              return 'Must be greater than last reading (${prev.toStringAsFixed(0)} km)';
+                            }
                           }
                           return null;
                         },
@@ -197,7 +242,8 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
                                     strokeWidth: 2,
                                     color: Colors.black))
                             : const Icon(Icons.save_rounded),
-                        label: const Text('Save Entry'),
+                        label: Text(
+                            widget._isEditing ? 'Update Entry' : 'Save Entry'),
                       ),
                     ],
                   ),
@@ -367,6 +413,7 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
     setState(() => _saving = true);
 
     final entry = FuelEntry(
+      id: widget.initialEntry?.id,
       vehicleId: vp.selected!.id!,
       date: DateFormat('yyyy-MM-dd').format(_date),
       kmReading: double.parse(_kmCtrl.text.trim()),
@@ -378,30 +425,47 @@ class _LogEntryScreenState extends State<LogEntryScreen> {
       notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
     );
 
-    final ok = await fp.addEntry(entry);
-    setState(() => _saving = false);
-
-    if (!context.mounted) return;
-    if (ok) {
+    if (widget._isEditing) {
+      await fp.updateEntry(entry);
+      setState(() => _saving = false);
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Row(
             children: [
               Icon(Icons.check_circle_rounded, color: AppTheme.success),
               SizedBox(width: 8),
-              Text('Entry saved successfully'),
+              Text('Entry updated successfully'),
             ],
           ),
         ),
       );
-      _reset();
+      Navigator.pop(context);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Odometer must be greater than previous entry'),
-          backgroundColor: AppTheme.danger,
-        ),
-      );
+      final ok = await fp.addEntry(entry);
+      setState(() => _saving = false);
+      if (!context.mounted) return;
+      if (ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: AppTheme.success),
+                SizedBox(width: 8),
+                Text('Entry saved successfully'),
+              ],
+            ),
+          ),
+        );
+        _reset();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Odometer must be greater than previous entry'),
+            backgroundColor: AppTheme.danger,
+          ),
+        );
+      }
     }
   }
 
